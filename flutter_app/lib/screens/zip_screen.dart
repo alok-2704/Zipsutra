@@ -1,5 +1,8 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'dart:io';
+import 'package:archive/archive.dart';
+import 'package:path_provider/path_provider.dart';
 
 class CreateZipScreen extends StatefulWidget {
   const CreateZipScreen({super.key});
@@ -13,9 +16,7 @@ class _CreateZipScreenState extends State<CreateZipScreen> {
   bool isCreatingZip = false;
 
   Future<void> pickFiles() async {
-    final result = await FilePicker.platform.pickFiles(
-      allowMultiple: true,
-    );
+    final result = await FilePicker.platform.pickFiles(allowMultiple: true);
 
     if (result != null) {
       setState(() {
@@ -27,9 +28,7 @@ class _CreateZipScreenState extends State<CreateZipScreen> {
   Future<void> createZip() async {
     if (selectedFiles.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please select files first'),
-        ),
+        const SnackBar(content: Text('Please select files first')),
       );
       return;
     }
@@ -38,20 +37,49 @@ class _CreateZipScreenState extends State<CreateZipScreen> {
       isCreatingZip = true;
     });
 
-    // Placeholder for Python integration
-    await Future.delayed(const Duration(seconds: 2));
+    try {
+      final archive = Archive();
 
-    setState(() {
-      isCreatingZip = false;
-    });
+      for (final file in selectedFiles) {
+        if (file.path == null) continue;
 
-    if (!mounted) return;
+        final bytes = await File(file.path!).readAsBytes();
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('ZIP file created successfully'),
-      ),
-    );
+        archive.addFile(ArchiveFile(file.name, bytes.length, bytes));
+      }
+
+      final documentsDir = await getApplicationDocumentsDirectory();
+      final zipPath =
+          '${documentsDir.path}/archive_${DateTime.now().millisecondsSinceEpoch}.zip';
+
+      final encoder = ZipEncoder();
+      final zipData = encoder.encode(archive);
+
+
+      final zipFile = File(zipPath);
+      await zipFile.writeAsBytes(zipData);
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('ZIP saved to:\n$zipPath'),
+          duration: const Duration(seconds: 5),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+    } finally {
+      if (mounted) {
+        setState(() {
+          isCreatingZip = false;
+        });
+      }
+    }
   }
 
   String formatFileSize(int bytes) {
@@ -68,9 +96,7 @@ class _CreateZipScreenState extends State<CreateZipScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Create ZIP'),
-      ),
+      appBar: AppBar(title: const Text('Create ZIP')),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -83,9 +109,7 @@ class _CreateZipScreenState extends State<CreateZipScreen> {
             const SizedBox(height: 20),
             Expanded(
               child: selectedFiles.isEmpty
-                  ? const Center(
-                      child: Text('No files selected'),
-                    )
+                  ? const Center(child: Text('No files selected'))
                   : ListView.builder(
                       itemCount: selectedFiles.length,
                       itemBuilder: (context, index) {
@@ -95,9 +119,7 @@ class _CreateZipScreenState extends State<CreateZipScreen> {
                           child: ListTile(
                             leading: const Icon(Icons.insert_drive_file),
                             title: Text(file.name),
-                            subtitle: Text(
-                              formatFileSize(file.size),
-                            ),
+                            subtitle: Text(formatFileSize(file.size)),
                           ),
                         );
                       },
@@ -112,14 +134,10 @@ class _CreateZipScreenState extends State<CreateZipScreen> {
                     ? const SizedBox(
                         width: 18,
                         height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                        ),
+                        child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.folder_zip),
-                label: Text(
-                  isCreatingZip ? 'Creating ZIP...' : 'Create ZIP',
-                ),
+                label: Text(isCreatingZip ? 'Creating ZIP...' : 'Create ZIP'),
               ),
             ),
           ],
