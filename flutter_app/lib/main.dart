@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'screens/zip_screen.dart';
 
 void main() {
   runApp(const ZipSutraApp());
@@ -73,13 +74,22 @@ class HomeScreen extends StatelessWidget {
               elevation: 4,
               child: InkWell(
                 borderRadius: BorderRadius.circular(12),
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('${feature.title} coming soon'),
-                    ),
-                  );
-                },
+               onTap: () {
+  if (feature.title == 'Create ZIP') {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const CreateZipScreen(),
+      ),
+    );
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${feature.title} coming soon'),
+      ),
+    );
+  }
+},
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
